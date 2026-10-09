@@ -1,0 +1,171 @@
+"""Bank Account Simulator
+Demonstrates conditional statements (if/elif/else), functions, and a class.
+"""
+
+
+class BankAccount:
+    def __init__(self, owner, balance=0, min_balance=0):
+        self.owner = owner
+        self.balance = balance
+        self.min_balance = min_balance
+        self.history = []  # list of (type, amount, balance_after)
+
+    def deposit(self, amount):
+        """Add money. Returns (success, message)."""
+        if amount <= 0:
+            return False, 'Deposit must be greater than zero.'
+        self.balance += amount
+        self.history.append(('Deposit', amount, self.balance))
+        return True, f'Deposited {amount}. New balance: {self.balance}'
+
+    def withdraw(self, amount):
+        """Take money out. Returns (success, message)."""
+        if amount <= 0:
+            return False, 'Withdrawal must be greater than zero.'
+        elif self.balance - amount < self.min_balance:
+            return False, 'Insufficient funds.'
+        self.balance -= amount
+        self.history.append(('Withdrawal', amount, self.balance))
+        return True, f'Withdrew {amount}. New balance: {self.balance}'
+
+    def check_balance(self):
+        return self.balance
+
+    def show_history(self):
+        if not self.history:
+            return 'No transactions yet.'
+        lines = []
+        for kind, amount, balance_after in self.history:
+            lines.append(f'{kind:<11} {amount:>8}   balance: {balance_after}')
+        return '\n'.join(lines)
+
+
+def get_amount(prompt):
+    """Ask for a number and handle invalid input. Returns None if invalid."""
+    text = input(prompt)
+    try:
+        return float(text)
+    except ValueError:
+        print('Please enter a valid number.')
+        return None
+
+
+def main():
+    account = BankAccount('Student', balance=0, min_balance=0)
+    print(f'Welcome, {account.owner}!')
+
+    while True:
+        print('\n1) Deposit  2) Withdraw  3) Balance  4) History  5) Quit')
+        choice = input('Choose an option: ')
+
+        if choice == '1':
+            amount = get_amount('Amount to deposit: ')
+            if amount is not None:
+                print(account.deposit(amount)[1])
+        elif choice == '2':
+            amount = get_amount('Amount to withdraw: ')
+            if amount is not None:
+                print(account.withdraw(amount)[1])
+        elif choice == '3':
+            print('Current balance:', account.check_balance())
+        elif choice == '4':
+            print(account.show_history())
+        elif choice == '5':
+            print('Goodbye!')
+            break
+        else:
+            print('Invalid choice. Pick 1-5.')
+
+
+# ---------------------------------------------------------------
+# Tests (run with: python bank_account.py --test)
+# ---------------------------------------------------------------
+
+def test_deposit_valid():
+    acc = BankAccount('Test')
+    ok, _ = acc.deposit(500)
+    assert ok is True
+    assert acc.check_balance() == 500
+
+
+def test_deposit_invalid():
+    acc = BankAccount('Test')
+    assert acc.deposit(0)[0] is False
+    assert acc.deposit(-50)[0] is False
+    assert acc.check_balance() == 0
+
+
+def test_withdraw_valid():
+    acc = BankAccount('Test', balance=500)
+    ok, _ = acc.withdraw(200)
+    assert ok is True
+    assert acc.check_balance() == 300
+
+
+def test_withdraw_insufficient_funds():
+    acc = BankAccount('Test', balance=100)
+    ok, message = acc.withdraw(1000)
+    assert ok is False
+    assert message == 'Insufficient funds.'
+    assert acc.check_balance() == 100
+
+
+def test_withdraw_invalid_amount():
+    acc = BankAccount('Test', balance=100)
+    assert acc.withdraw(0)[0] is False
+    assert acc.withdraw(-10)[0] is False
+    assert acc.check_balance() == 100
+
+
+def test_withdraw_exact_balance():
+    acc = BankAccount('Test', balance=100)
+    assert acc.withdraw(100)[0] is True
+    assert acc.check_balance() == 0
+
+
+def test_minimum_balance():
+    acc = BankAccount('Test', balance=500, min_balance=100)
+    assert acc.withdraw(450)[0] is False   # would leave 50, below minimum
+    assert acc.withdraw(400)[0] is True    # leaves exactly 100
+    assert acc.check_balance() == 100
+
+
+def test_history():
+    acc = BankAccount('Test')
+    assert acc.show_history() == 'No transactions yet.'
+    acc.deposit(500)
+    acc.withdraw(200)
+    acc.withdraw(1000)  # failed, should not be logged
+    assert len(acc.history) == 2
+    assert acc.history[0] == ('Deposit', 500, 500)
+    assert acc.history[1] == ('Withdrawal', 200, 300)
+
+
+def run_tests():
+    tests = [
+        test_deposit_valid,
+        test_deposit_invalid,
+        test_withdraw_valid,
+        test_withdraw_insufficient_funds,
+        test_withdraw_invalid_amount,
+        test_withdraw_exact_balance,
+        test_minimum_balance,
+        test_history,
+    ]
+    passed = 0
+    for test in tests:
+        try:
+            test()
+            print(f'PASS  {test.__name__}')
+            passed += 1
+        except AssertionError:
+            print(f'FAIL  {test.__name__}')
+    print(f'\n{passed}/{len(tests)} tests passed')
+
+
+if __name__ == '__main__':
+    import sys
+    if '--test' in sys.argv:
+        run_tests()
+    else:
+        main()
